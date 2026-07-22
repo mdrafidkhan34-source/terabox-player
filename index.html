@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Terabox Video Player</title>
+    <title>Terabox Online Player</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         * {
@@ -16,66 +16,54 @@
             height: 100%;
             background-color: #000;
             color: #fff;
-            font-family: sans-serif;
+            font-family: Arial, sans-serif;
             overflow: hidden;
             display: flex;
             justify-content: center;
             align-items: center;
         }
-        #loader-box {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
+        #loader {
             text-align: center;
+            padding: 20px;
         }
         .spinner {
             width: 45px;
             height: 45px;
-            border: 4px solid rgba(255, 255, 255, 0.2);
-            border-top-color: #0088cc;
+            border: 4px solid #222;
+            border-top: 4px solid #0088cc;
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
-            margin-bottom: 15px;
+            margin: 0 auto 15px;
         }
         @keyframes spin {
-            to { transform: rotate(360deg); }
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
         #status-text {
             font-size: 15px;
-            color: #e0e0e0;
+            color: #ccc;
         }
-        #video-box {
+        #player-container {
+            width: 100%;
+            height: 100%;
             display: none;
+        }
+        iframe {
             width: 100%;
             height: 100%;
-            position: absolute;
-            top: 0;
-            left: 0;
-            background: #000;
-        }
-        video {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            outline: none;
-        }
-        .error {
-            color: #ff4d4d;
-            font-weight: bold;
+            border: none;
         }
     </style>
 </head>
 <body>
 
-    <div id="loader-box">
-        <div class="spinner" id="spinner"></div>
-        <div id="status-text">🎬 ভিডিও লোড হচ্ছে, অনুগ্রহ করে একটু অপেক্ষা করুন...</div>
+    <div id="loader">
+        <div class="spinner"></div>
+        <p id="status-text">⚡ ভিডিও প্রসেস করা হচ্ছে, অনুগ্রহ করে অপেক্ষা করুন...</p>
     </div>
 
-    <div id="video-box">
-        <video id="player" controls autoplay playsinline referrerpolicy="no-referrer"></video>
+    <div id="player-container">
+        <iframe id="video-frame" allow="autoplay; fullscreen" allowfullscreen></iframe>
     </div>
 
     <script>
@@ -85,74 +73,45 @@
             window.Telegram.WebApp.expand();
         }
 
-        const loaderBox = document.getElementById('loader-box');
-        const spinner = document.getElementById('spinner');
-        const statusText = document.getElementById('status-text');
-        const videoBox = document.getElementById('video-box');
-        const player = document.getElementById('player');
-
         const urlParams = new URLSearchParams(window.location.search);
         let rawUrl = urlParams.get('url');
 
         if (!rawUrl) {
-            showError("❌ কোনো ভিডিও লিংক পাওয়া যায়নি!");
+            document.getElementById('status-text').innerHTML = "<span style='color:red;'>❌ কোনো ভিডিও লিংক পাওয়া যায়নি!</span>";
         } else {
-            // ডোমেইন ক্লিনআপ (1024terabox/4funbox -> terabox.com)
+            // ডোমেইন ক্লিনআপ
             let cleanUrl = rawUrl.replace(/1024terabox\.com|1024tera\.com|teraboxapp\.com|4funbox\.com|mirrobox\.com|nepobox\.com|freeterabox\.com/g, 'terabox.com');
             
             // surl আইডি বের করা
             let surl = "";
-            let surlMatch = cleanUrl.match(/\/s\/([a-zA-Z0-9_-]+)/) || cleanUrl.match(/surl=([a-zA-Z0-9_-]+)/);
-            if (surlMatch && surlMatch[1]) {
-                surl = surlMatch[1];
+            let match = cleanUrl.match(/\/s\/([a-zA-Z0-9_-]+)/) || cleanUrl.match(/surl=([a-zA-Z0-9_-]+)/);
+            if (match && match[1]) {
+                surl = match[1];
             }
 
-            fetchVideoStream(cleanUrl, surl);
+            loadPlayer(cleanUrl, surl);
         }
 
-        function showError(msg) {
-            spinner.style.display = 'none';
-            statusText.innerHTML = `<span class="error">${msg}</span>`;
-        }
+        function loadPlayer(url, surl) {
+            const loader = document.getElementById('loader');
+            const playerContainer = document.getElementById('player-container');
+            const videoFrame = document.getElementById('video-frame');
 
-        async function fetchVideoStream(url, surl) {
-            statusText.innerText = "⚡ ভিডিও প্রসেস করা হচ্ছে...";
-
-            const apis = [
-                `https://terabox-dl.qtcloud.workers.dev/api/get-download?url=${encodeURIComponent(url)}`,
-                `https://terabox.ptmn.workers.dev/api?url=${encodeURIComponent(url)}`
-            ];
-
-            let directLink = null;
-
-            for (let api of apis) {
-                try {
-                    let res = await fetch(api);
-                    if (res.ok) {
-                        let data = await res.json();
-                        directLink = data.download_link || data.fast_download_link || data.url || (data.list && data.list[0] && data.list[0].dlink);
-                        if (directLink) break;
-                    }
-                } catch (e) {
-                    console.log("API Error:", e);
-                }
-            }
-
-            if (directLink) {
-                startPlayer(directLink);
-            } else if (surl) {
-                let fallbackStream = `https://terabox-app.pages.dev/api/stream?surl=${surl}`;
-                startPlayer(fallbackStream);
+            // Terabox-এর প্লেয়ার ইঞ্জিন ব্যবহার করে সরাসরি প্লে করা
+            let embedUrl = "";
+            if (surl) {
+                embedUrl = "https://terabox.app/sharing/embed?surl=" + surl;
             } else {
-                showError("❌ ভিডিও প্রস্তুত করা সম্ভব হয়নি। লিংকটি আবার চেক করুন।");
+                embedUrl = "https://terabox-app.pages.dev/play?url=" + encodeURIComponent(url);
             }
-        }
 
-        function startPlayer(streamUrl) {
-            loaderBox.style.display = 'none';
-            videoBox.style.display = 'block';
-            player.src = streamUrl;
-            player.play().catch(e => console.log("Autoplay error:", e));
+            videoFrame.src = embedUrl;
+
+            // ১ সেকেন্ড পর লোডার বন্ধ করে প্লেয়ার দেখাবে
+            setTimeout(() => {
+                loader.style.display = 'none';
+                playerContainer.style.display = 'block';
+            }, 1200);
         }
     </script>
 </body>
