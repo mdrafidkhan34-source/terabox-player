@@ -3,62 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="referrer" content="no-referrer">
-    <title>Terabox Video Player</title>
+    <title>Video Player</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        * {
+        body, html {
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
-        }
-        html, body {
             width: 100%;
             height: 100%;
-            background-color: #000;
-            overflow: hidden;
-            font-family: sans-serif;
-            color: #fff;
-        }
-        #loader {
+            background-color: #000; /* ২য় ছবির মতো কালো ব্যাকগ্রাউন্ড */
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
-            text-align: center;
+            font-family: sans-serif;
+            color: white;
+            overflow: hidden;
         }
-        .spinner {
-            width: 42px;
-            height: 42px;
-            border: 4px solid #222;
-            border-top: 4px solid #0088cc;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            margin-bottom: 12px;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        iframe {
+        /* ২য় ছবির মতো ন্যাটিভ ভিডিও প্লেয়ার ডিজাইন */
+        video {
             width: 100%;
             height: 100%;
-            border: none;
-            display: none;
+            max-height: 100vh;
+            outline: none;
+            background: #000;
+        }
+        #loading {
+            position: absolute;
+            text-align: center;
+            font-size: 16px;
         }
     </style>
 </head>
 <body>
 
-    <div id="loader">
-        <div class="spinner"></div>
-        <p id="status-text">🎬 ভিডিও লোড হচ্ছে...</p>
+    <!-- লোডিং স্ক্রিন -->
+    <div id="loading">
+        <h2>⏳</h2>
+        <p>ভিডিও প্রসেস হচ্ছে, দয়া করে কয়েক সেকেন্ড অপেক্ষা করুন...</p>
     </div>
-
-    <iframe id="player" allowfullscreen allow="autoplay; encrypted-media; picture-in-picture"></iframe>
+    
+    <!-- ডাইরেক্ট অরিজিনাল ভিডিও প্লেয়ার (২য় ছবির মতো) -->
+    <video id="player" controls playsinline style="display: none;"></video>
 
     <script>
+        // Telegram WebApp ফুলস্ক্রিন করা
         if (window.Telegram && window.Telegram.WebApp) {
             window.Telegram.WebApp.ready();
             window.Telegram.WebApp.expand();
@@ -67,34 +55,55 @@
         const urlParams = new URLSearchParams(window.location.search);
         let rawUrl = urlParams.get('url');
 
-        if (rawUrl) {
-            // ডোমেইন ঠিক করা
+        async function loadVideo() {
+            if (!rawUrl) {
+                document.getElementById('loading').innerHTML = '<p style="color:red;">❌ কোনো ভিডিও লিংক পাওয়া যায়নি!</p>';
+                return;
+            }
+
+            // লিংক ক্লিনআপ
             let cleanUrl = rawUrl.replace(/1024terabox\.com|1024tera\.com|teraboxapp\.com|4funbox\.com|mirrobox\.com|nepobox\.com|freeterabox\.com/g, 'terabox.com');
-            
-            // surl আইডি বের করা
-            let surl = "";
-            let match = cleanUrl.match(/\/s\/([a-zA-Z0-9_-]+)/) || cleanUrl.match(/surl=([a-zA-Z0-9_-]+)/);
-            if (match && match[1]) {
-                surl = match[1];
-            }
 
-            const loader = document.getElementById('loader');
-            const iframe = document.getElementById('player');
-
-            if (surl) {
-                // Terabox-এর অফিশিয়াল এমবেড সিস্টেম (এটি কখনো 404 হবে না)
-                iframe.src = "https://www.terabox.com/sharing/embed?surl=" + surl;
+            try {
+                // API 1: ভিডিওর ডাইরেক্ট .mp4 লিংক বের করা
+                let response = await fetch(`https://terabox-dl.qtcloud.workers.dev/api/get-download?url=${encodeURIComponent(cleanUrl)}`);
+                let data = await response.json();
                 
-                setTimeout(() => {
-                    loader.style.display = 'none';
-                    iframe.style.display = 'block';
-                }, 1000);
-            } else {
-                document.getElementById('status-text').innerHTML = "<span style='color:red;'>❌ ভিডিও লিংক থেকে আইডি বের করা সম্ভব হয়নি!</span>";
+                let videoUrl = data.download_link || data.fast_download_link;
+                
+                if (videoUrl) {
+                    playVideo(videoUrl);
+                } else {
+                    throw new Error("API 1 Failed");
+                }
+            } catch (error) {
+                try {
+                    // API 2: ব্যাকআপ API
+                    let res2 = await fetch(`https://terabox.ptmn.workers.dev/api/get-info?url=${encodeURIComponent(cleanUrl)}`);
+                    let data2 = await res2.json();
+                    
+                    if (data2.video_url || data2.download_link) {
+                        playVideo(data2.video_url || data2.download_link);
+                    } else {
+                        document.getElementById('loading').innerHTML = '<p style="color:red;">❌ ভিডিও প্লে করা যাচ্ছে না। লিংকটি প্রাইভেট হতে পারে।</p>';
+                    }
+                } catch (err) {
+                    document.getElementById('loading').innerHTML = '<p style="color:red;">❌ সার্ভার এরর! কিছুক্ষণ পর আবার চেষ্টা করুন।</p>';
+                }
             }
-        } else {
-            document.getElementById('status-text').innerHTML = "<span style='color:red;'>❌ কোনো ভিডিও লিংক পাওয়া যায়নি!</span>";
         }
+
+        function playVideo(src) {
+            // লোডিং হাইড করে প্লেয়ার শো করানো
+            document.getElementById('loading').style.display = 'none';
+            const video = document.getElementById('player');
+            video.style.display = 'block';
+            video.src = src;
+            video.play(); // অটো প্লে
+        }
+
+        // ফাংশন চালু করা
+        loadVideo();
     </script>
 </body>
 </html>
