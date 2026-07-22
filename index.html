@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Online Player</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background-color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        video {
+            width: 100%;
+            max-height: 100vh;
+            outline: none;
+        }
+    </style>
+</head>
+<body>
+
+    <video id="videoPlayer" controls autoplay playsinline></video>
+
+    <script>
+        window.Telegram.WebApp.ready();
+        window.Telegram.WebApp.expand();
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const videoUrl = urlParams.get('url');
+
+        if (videoUrl) {
+            document.getElementById('videoPlayer').src = videoUrl;
+        } else {
+            document.body.innerHTML = "<h3 style='color:white; text-align:center;'>ভিডিওর লিংক পাওয়া যায়নি!</h3>";
+        }
+    </script>
+</body>
+</html>
