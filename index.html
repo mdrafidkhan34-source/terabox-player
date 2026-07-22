@@ -6,29 +6,25 @@
     <title>Online Player</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        * {
+        body {
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
-        }
-        body {
             background-color: #000;
+            height: 100vh;
+            overflow: hidden;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            overflow: hidden;
         }
-        video {
+        iframe {
             width: 100%;
-            max-height: 100vh;
-            outline: none;
+            height: 100%;
+            border: none;
         }
     </style>
 </head>
 <body>
-
-    <video id="videoPlayer" controls autoplay playsinline></video>
+    <iframe id="videoPlayer" allowfullscreen allow="autoplay; fullscreen"></iframe>
 
     <script>
         window.Telegram.WebApp.ready();
@@ -38,7 +34,7 @@
         const videoUrl = urlParams.get('url');
 
         if (videoUrl) {
-            document.getElementById('videoPlayer').src = videoUrl;
+            document.getElementById('videoPlayer').src = "https://terabox-app.pages.dev/play?url=" + videoUrl;
         } else {
             document.body.innerHTML = "<h3 style='color:white; text-align:center;'>ভিডিওর লিংক পাওয়া যায়নি!</h3>";
         }
