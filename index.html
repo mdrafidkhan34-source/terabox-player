@@ -3,6 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <!-- ⚠️ এটিই Terabox-এর ডোমেইন ও ভিডিও ব্লক সমাধান করবে -->
+    <meta name="referrer" content="no-referrer">
+    
     <title>Terabox Online Player</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
@@ -11,42 +15,13 @@
             padding: 0;
             box-sizing: border-box;
         }
-        body, html {
+        html, body {
             width: 100%;
             height: 100%;
             background-color: #000;
-            color: #fff;
-            font-family: Arial, sans-serif;
             overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        #loader {
-            text-align: center;
-            padding: 20px;
-        }
-        .spinner {
-            width: 45px;
-            height: 45px;
-            border: 4px solid #222;
-            border-top: 4px solid #0088cc;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            margin: 0 auto 15px;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        #status-text {
-            font-size: 15px;
-            color: #ccc;
-        }
-        #player-container {
-            width: 100%;
-            height: 100%;
-            display: none;
+            font-family: sans-serif;
+            color: #fff;
         }
         iframe {
             width: 100%;
@@ -57,14 +32,7 @@
 </head>
 <body>
 
-    <div id="loader">
-        <div class="spinner"></div>
-        <p id="status-text">⚡ ভিডিও প্রসেস করা হচ্ছে, অনুগ্রহ করে অপেক্ষা করুন...</p>
-    </div>
-
-    <div id="player-container">
-        <iframe id="video-frame" allow="autoplay; fullscreen" allowfullscreen></iframe>
-    </div>
+    <iframe id="player" allowfullscreen allow="autoplay; encrypted-media; picture-in-picture"></iframe>
 
     <script>
         // Telegram WebApp প্রসারিত করা
@@ -76,42 +44,17 @@
         const urlParams = new URLSearchParams(window.location.search);
         let rawUrl = urlParams.get('url');
 
-        if (!rawUrl) {
-            document.getElementById('status-text').innerHTML = "<span style='color:red;'>❌ কোনো ভিডিও লিংক পাওয়া যায়নি!</span>";
-        } else {
-            // ডোমেইন ক্লিনআপ
+        if (rawUrl) {
+            // ডোমেইন ক্লিনআপ (1024terabox/4funbox ইত্যাদিকে terabox.com করা)
             let cleanUrl = rawUrl.replace(/1024terabox\.com|1024tera\.com|teraboxapp\.com|4funbox\.com|mirrobox\.com|nepobox\.com|freeterabox\.com/g, 'terabox.com');
             
-            // surl আইডি বের করা
-            let surl = "";
-            let match = cleanUrl.match(/\/s\/([a-zA-Z0-9_-]+)/) || cleanUrl.match(/surl=([a-zA-Z0-9_-]+)/);
-            if (match && match[1]) {
-                surl = match[1];
-            }
-
-            loadPlayer(cleanUrl, surl);
-        }
-
-        function loadPlayer(url, surl) {
-            const loader = document.getElementById('loader');
-            const playerContainer = document.getElementById('player-container');
-            const videoFrame = document.getElementById('video-frame');
-
-            // Terabox-এর প্লেয়ার ইঞ্জিন ব্যবহার করে সরাসরি প্লে করা
-            let embedUrl = "";
-            if (surl) {
-                embedUrl = "https://terabox.app/sharing/embed?surl=" + surl;
-            } else {
-                embedUrl = "https://terabox-app.pages.dev/play?url=" + encodeURIComponent(url);
-            }
-
-            videoFrame.src = embedUrl;
-
-            // ১ সেকেন্ড পর লোডার বন্ধ করে প্লেয়ার দেখাবে
-            setTimeout(() => {
-                loader.style.display = 'none';
-                playerContainer.style.display = 'block';
-            }, 1200);
+            // প্লেয়ার লিংক তৈরি
+            let playerUrl = "https://terabox-app.pages.dev/play?url=" + encodeURIComponent(cleanUrl);
+            
+            // iframe এ লোড করা
+            document.getElementById('player').src = playerUrl;
+        } else {
+            document.body.innerHTML = "<h3 style='text-align:center; margin-top:45vh;'>❌ কোনো ভিডিও লিংক পাওয়া যায়নি!</h3>";
         }
     </script>
 </body>
