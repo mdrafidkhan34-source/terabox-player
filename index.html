@@ -6,34 +6,44 @@
     <title>Online Player</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body {
+        * {
             margin: 0;
             padding: 0;
+            box-sizing: border-box;
+        }
+        body {
             background-color: #000;
             color: #fff;
-            font-family: sans-serif;
+            height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
+            overflow: hidden;
+        }
+        video {
+            width: 100%;
             height: 100vh;
+            object-fit: contain;
         }
     </style>
 </head>
 <body>
-    <h3>ভিডিও লোড হচ্ছে, অনুগ্রহ করে অপেক্ষা করুন...</h3>
+    <video id="player" controls autoplay playsinline></video>
 
     <script>
+        // Telegram WebApp প্রসারিত করা
         window.Telegram.WebApp.ready();
         window.Telegram.WebApp.expand();
 
+        // URL থেকে ভিডিওর ডাইরেক্ট লিংক নেওয়া
         const urlParams = new URLSearchParams(window.location.search);
-        const videoUrl = urlParams.get('url');
+        const streamUrl = urlParams.get('url');
 
-        if (videoUrl) {
-            // iframe ছাড়া সরাসরি প্লেয়ার পেজে রিডাইরেক্ট করা হচ্ছে
-            window.location.replace("https://terabox-app.pages.dev/play?url=" + encodeURIComponent(videoUrl));
+        if (streamUrl) {
+            const videoElement = document.getElementById('player');
+            videoElement.src = streamUrl;
         } else {
-            document.body.innerHTML = "<h3>ভিডিওর লিংক পাওয়া যায়নি!</h3>";
+            document.body.innerHTML = "<p>ভিডিওর লিংক পাওয়া যায়নি!</p>";
         }
     </script>
 </body>
