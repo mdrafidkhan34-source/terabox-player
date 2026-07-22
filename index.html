@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Online Player</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+    <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
     <style>
         * {
             margin: 0;
@@ -15,47 +17,95 @@
             width: 100%;
             height: 100%;
             background-color: #000;
-            overflow: hidden;
+            color: #fff;
+            font-family: sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
-            color: #fff;
-            font-family: sans-serif;
+            overflow: hidden;
+            text-align: center;
         }
-        iframe {
+        #status {
+            font-size: 16px;
+            padding: 20px;
+        }
+        .player-box {
+            width: 100%;
+            height: 100vh;
+            display: none;
+        }
+        video {
             width: 100%;
             height: 100%;
-            border: none;
         }
     </style>
 </head>
 <body>
-    <iframe id="videoPlayer" allowfullscreen allow="autoplay; encrypted-media; picture-in-picture"></iframe>
+
+    <div id="status">⏳ ভিডিও লোড হচ্ছে, অনুগ্রহ করে কয়েক সেকেন্ড অপেক্ষা করুন...</div>
+
+    <div class="player-box" id="playerContainer">
+        <video id="player" controls playsinline autoplay></video>
+    </div>
 
     <script>
-        // Telegram WebApp চালু করা
+        // Telegram WebApp প্রসারিত করা
         if (window.Telegram && window.Telegram.WebApp) {
             window.Telegram.WebApp.ready();
             window.Telegram.WebApp.expand();
         }
 
         const urlParams = new URLSearchParams(window.location.search);
-        const rawUrl = urlParams.get('url');
+        const targetUrl = urlParams.get('url');
 
-        if (rawUrl) {
-            const player = document.getElementById('videoPlayer');
-            
-            // Terabox লিঙ্ক থেকে surl আইডি বের করা
-            let match = rawUrl.match(/\/s\/([a-zA-Z0-9_-]+)/) || rawUrl.match(/surl=([a-zA-Z0-9_-]+)/);
-            
-            if (match && match[1]) {
-                // Terabox এর নিজস্ব এমবেড প্লেয়ার
-                player.src = "https://www.terabox.com/sharing/embed?surl=" + match[1];
-            } else {
-                player.src = "https://terabox-app.pages.dev/play?url=" + encodeURIComponent(rawUrl);
-            }
+        if (targetUrl) {
+            // Terabox লিঙ্ক থেকে Direct Video MP4 লিঙ্ক বের করার API
+            fetch("https://terabox-dl.qtcloud.workers.dev/api/get-download?url=" + encodeURIComponent(targetUrl))
+            .then(response => response.json())
+            .then(data => {
+                let streamUrl = data.download_link || (data.fast_download_link ? data.fast_download_link : null);
+                
+                if (streamUrl) {
+                    startVideo(streamUrl);
+                } else {
+                    tryBackupApi(targetUrl);
+                }
+            })
+            .catch(() => {
+                tryBackupApi(targetUrl);
+            });
         } else {
-            document.body.innerHTML = "<h3>কোনো ভিডিও লিংক পাওয়া যায়নি!</h3>";
+            document.getElementById('status').innerText = "❌ কোনো ভিডিও লিংক পাওয়া যায়নি!";
+        }
+
+        // ১ম API ব্যর্থ হলে ব্যাকআপ API
+        function tryBackupApi(url) {
+            fetch("https://terabox.ptmn.workers.dev/api?url=" + encodeURIComponent(url))
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.url) {
+                    startVideo(data.url);
+                } else {
+                    document.getElementById('status').innerText = "❌ ভিডিও স্ট্রিম করা সম্ভব হচ্ছে না! লিংকটি আবার চেক করুন।";
+                }
+            })
+            .catch(() => {
+                document.getElementById('status').innerText = "❌ ভিডিও লোড করতে সমস্যা হয়েছে!";
+            });
+        }
+
+        // ভিডিও প্লেয়ার চালু করার ফংশন
+        function startVideo(directMp4Url) {
+            document.getElementById('status').style.display = 'none';
+            document.getElementById('playerContainer').style.display = 'block';
+
+            const video = document.getElementById('player');
+            video.src = directMp4Url;
+            
+            new Plyr('#player', {
+                autoplay: true,
+                controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'fullscreen']
+            });
         }
     </script>
 </body>
