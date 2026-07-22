@@ -3,11 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    
-    <!-- ⚠️ এটিই Terabox-এর ডোমেইন ও ভিডিও ব্লক সমাধান করবে -->
     <meta name="referrer" content="no-referrer">
-    
-    <title>Terabox Online Player</title>
+    <title>Terabox Video Player</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         * {
@@ -23,19 +20,45 @@
             font-family: sans-serif;
             color: #fff;
         }
+        #loader {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            text-align: center;
+        }
+        .spinner {
+            width: 42px;
+            height: 42px;
+            border: 4px solid #222;
+            border-top: 4px solid #0088cc;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 12px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
         iframe {
             width: 100%;
             height: 100%;
             border: none;
+            display: none;
         }
     </style>
 </head>
 <body>
 
+    <div id="loader">
+        <div class="spinner"></div>
+        <p id="status-text">🎬 ভিডিও লোড হচ্ছে...</p>
+    </div>
+
     <iframe id="player" allowfullscreen allow="autoplay; encrypted-media; picture-in-picture"></iframe>
 
     <script>
-        // Telegram WebApp প্রসারিত করা
         if (window.Telegram && window.Telegram.WebApp) {
             window.Telegram.WebApp.ready();
             window.Telegram.WebApp.expand();
@@ -45,16 +68,32 @@
         let rawUrl = urlParams.get('url');
 
         if (rawUrl) {
-            // ডোমেইন ক্লিনআপ (1024terabox/4funbox ইত্যাদিকে terabox.com করা)
+            // ডোমেইন ঠিক করা
             let cleanUrl = rawUrl.replace(/1024terabox\.com|1024tera\.com|teraboxapp\.com|4funbox\.com|mirrobox\.com|nepobox\.com|freeterabox\.com/g, 'terabox.com');
             
-            // প্লেয়ার লিংক তৈরি
-            let playerUrl = "https://terabox-app.pages.dev/play?url=" + encodeURIComponent(cleanUrl);
-            
-            // iframe এ লোড করা
-            document.getElementById('player').src = playerUrl;
+            // surl আইডি বের করা
+            let surl = "";
+            let match = cleanUrl.match(/\/s\/([a-zA-Z0-9_-]+)/) || cleanUrl.match(/surl=([a-zA-Z0-9_-]+)/);
+            if (match && match[1]) {
+                surl = match[1];
+            }
+
+            const loader = document.getElementById('loader');
+            const iframe = document.getElementById('player');
+
+            if (surl) {
+                // Terabox-এর অফিশিয়াল এমবেড সিস্টেম (এটি কখনো 404 হবে না)
+                iframe.src = "https://www.terabox.com/sharing/embed?surl=" + surl;
+                
+                setTimeout(() => {
+                    loader.style.display = 'none';
+                    iframe.style.display = 'block';
+                }, 1000);
+            } else {
+                document.getElementById('status-text').innerHTML = "<span style='color:red;'>❌ ভিডিও লিংক থেকে আইডি বের করা সম্ভব হয়নি!</span>";
+            }
         } else {
-            document.body.innerHTML = "<h3 style='text-align:center; margin-top:45vh;'>❌ কোনো ভিডিও লিংক পাওয়া যায়নি!</h3>";
+            document.getElementById('status-text').innerHTML = "<span style='color:red;'>❌ কোনো ভিডিও লিংক পাওয়া যায়নি!</span>";
         }
     </script>
 </body>
